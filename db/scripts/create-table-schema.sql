@@ -1,0 +1,36 @@
+CREATE TABLE public.store_current_positions (
+	id        UUID DEFAULT uuidv7(),   	-- generated here
+	tenant_id UUID not null,            -- supplied by caller, generated in tenants
+	store_id  UUID not null,                    	-- supplied by caller, generated in stores	
+  	barcode TEXT,							
+	sku_id TEXT not null,
+    sku_variant TEXT,
+    sku_batch TEXT,
+    current_retail_price NUMERIC(12, 2),
+    unit_cost NUMERIC(12, 2),
+    stock_qty NUMERIC(14, 2),
+    promo_price NUMERIC(12, 4),
+    promo_identifier TEXT,
+    expiry_date DATE,
+    expiry_source TEXT,
+    expiry_confidence REAL,
+    receipt_date DATE,
+    lead_time_days SMALLINT,
+    reorder_point NUMERIC(12, 3),
+    sku_status TEXT,
+    product_name TEXT,
+    product_description TEXT,
+    product_category TEXT,
+    product_sub_category TEXT,
+    product_department TEXT,
+    packaging_type TEXT,
+    sku_weight NUMERIC(8, 3),
+    unit_of_measure TEXT,
+    regulatory_flag BOOLEAN,
+    regulatory_type TEXT,
+    tax_treatment TEXT,
+    currency CHAR(3),
+    last_updated_at TIMESTAMPTZ,
+    column_timestamps JSONB,
+    CONSTRAINT pk_store_current_positions PRIMARY KEY (id)
+);

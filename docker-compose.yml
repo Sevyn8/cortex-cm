@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: ithina-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user_admin_backend
+      POSTGRES_PASSWORD: password_admin_backend
+      POSTGRES_DB: ithina_platform_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - ithina_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_admin_backend -d ithina_platform_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+ ithina_postgres_data:

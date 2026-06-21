@@ -1,0 +1,151 @@
+# Ithina Admin Backend — .dockerignore
+#
+# Files and directories excluded from the Docker build context.
+# Rule of thumb: include only what the running container actually needs.
+
+# ============================================================================
+# Python build artefacts
+# ============================================================================
+
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# ============================================================================
+# Tests
+# ============================================================================
+
+tests/
+
+# ============================================================================
+# Secrets and local-only files
+# ============================================================================
+
+# Auth keys (never bake into image; mounted via Secret Manager in production)
+keys/
+*.pem
+*.key
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.envrc
+
+# ============================================================================
+# Documentation (keep image small; docs live in repo, not container)
+# ============================================================================
+
+docs/
+*.md
+README.md
+CLAUDE.md
+BUILD_PLAN.md
+
+# Re-include README.md (required by pyproject.toml's `readme = "README.md"`;
+# hatchling reads it when `uv sync` builds the project wheel in the Dockerfile).
+!README.md
+
+# ============================================================================
+# Source DDL files (only needed for migrations; migrations folder is included)
+# ============================================================================
+
+db/raw_ddl/
+db/seeds/
+
+# Note: migrations/ is INCLUDED (intentionally).
+# If the container needs to run alembic upgrade at startup or in a Job,
+# migrations/ must be in the image.
+
+# ============================================================================
+# Git and version control
+# ============================================================================
+
+.git/
+.gitignore
+.gitattributes
+
+# ============================================================================
+# IDE / editor
+# ============================================================================
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.DS_Store
+Thumbs.db
+
+# ============================================================================
+# Kubernetes manifests (deployed separately, not part of the image)
+# ============================================================================
+
+k8s/
+
+# ============================================================================
+# CI / scripts not needed in container
+# ============================================================================
+
+# scripts that are dev-only (check_setup, seed scripts).
+# scripts/smoke_test.py and scripts/verify_cloud_schema.py are intentionally
+# kept in the build context — they're COPYed in by the Dockerfile and run
+# from Cloud Run Jobs against Cloud SQL (Step 4.1 schema bring-up).
+scripts/check_setup.sh
+scripts/excel_to_seed_sql.py
+scripts/apply_seeds.sh
+
+# ============================================================================
+# Logs and temporary files
+# ============================================================================
+
+*.log
+logs/
+tmp/
+*.tmp
+*.bak
+
+# ============================================================================
+# Docker-related (avoid recursive copies)
+# ============================================================================
+
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# ============================================================================
+# Dev seed data (not needed at runtime; seed loader runs locally only)
+# ============================================================================
+
+data/
+
+# ============================================================================
+# Other
+# ============================================================================
+
+# uv lockfile is kept (used by `uv sync --frozen` in Dockerfile)
+# pyproject.toml is kept (used by `uv sync` in Dockerfile)
+
+# Local Postgres data (if a volume is bind-mounted to repo for any reason)
+postgres-data/

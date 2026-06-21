@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Secrets / keys
+keys/
+*.pem
+*.key
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test / coverage
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Logs
+*.log
+
+# Local-only scripts
+check_install_setup.sh
+
+# Personal archive of historical prompts and drafts; not part of the build.
+docs/archive/
+!docs/archive/CLAUDE_v0.md
+!docs/archive/README.md
+!docs/archive/step-B-uuidv7-prompt-draft.md
+
+# LibreOffice lock files (auto-created when files are open)
+*.~lock.*#
+
+# Per-developer JWT tokens — credentials never go in git
+scripts/jwt/tokens/
+
+# Test-harness per-run output — response bodies + setup discovery JSONs
+scripts/test_endpoints/results*/
+
+# Cloud JWT tokens (long-lived; do not commit — RS256-signed, valid against deployed services)
+scripts/jwt/tokens/cloud/

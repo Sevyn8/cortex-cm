@@ -1,0 +1,43 @@
+[project]
+name = "admin-backend"
+version = "0.1.0"
+description = "Ithina Admin Backend service"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.14",
+    "pydantic[email]>=2.9",
+    "pydantic-settings>=2.6",
+    "pyjwt[crypto]>=2.8",
+    "python-json-logger>=2.0,<4.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "httpx>=0.27",
+    "mypy>=1.13",
+    "openpyxl>=3.1.5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/admin_backend"]
+
+[tool.pytest.ini_options]
+# Auto-mark async test functions and fixtures so each async def in
+# tests/ doesn't need @pytest.mark.asyncio / @pytest_asyncio.fixture.
+asyncio_mode = "auto"
+# Scope collection to tests/. Without this, scripts/smoke_test.py is
+# auto-collected because its functions are named test_*; they take
+# positional args and cannot run as pytest tests, surfacing as
+# collection errors rather than failures.
+testpaths = ["tests"]
