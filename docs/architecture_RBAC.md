@@ -1724,6 +1724,19 @@ Key differences from the tenants (Step 6.11) transition matrix:
   Stage 3 territory). The app layer maps INVITED ->
   {SUSPENDED, ACTIVE} to 409 `INVALID_STATE_TRANSITION` so the client
   never sees a 500 from `ck_tenant_users_auth0_sub_consistency`.
+
+  Auth0 provisioning (Step CI-4b): after the INVITED row commits, a
+  post-commit FastAPI background task provisions the Auth0 user (with
+  app_metadata `{tenant_id, user_type, user_id}`) and issues an
+  invitation ticket via the Auth0 Management client. The task runs
+  AFTER the response and after the session commit-in-teardown, so the
+  row is durably committed first. It is fail-safe: an Auth0 failure
+  leaves the row a valid re-provisionable INVITED user (logged, not
+  rolled back, not surfaced to the client; 201-before-provisioning is
+  the accepted observable behavior). It does NOT write `auth0_sub`
+  (forbidden while INVITED); recording `auth0_sub` and INVITED->ACTIVE
+  is the invite-accept callback, Step 4c. Platform-user provisioning is
+  a separate future question (no platform_users create endpoint exists).
 - Only ACTIVE <-> SUSPENDED is a valid transition pair. TRIAL exists
   on tenants but not on tenant_users; ONBOARDING / TERMINATED are
   not tenant_user states.

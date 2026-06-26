@@ -51,12 +51,13 @@ exactly.
 from typing import Any
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from admin_backend.auth.anchor_deps import get_tenant_user_anchor
 from admin_backend.auth.context import AuthContext
 from admin_backend.auth.permissions import require
+from admin_backend.auth.provisioning import provision_auth0_user
 from admin_backend.dependencies import get_auth_context, get_tenant_session_dep
 from admin_backend.errors import (
     DuplicateRoleAssignmentInRequestError,
@@ -388,6 +389,7 @@ def _raise_if_self_edit(auth: AuthContext, user_id: UUID) -> None:
 async def create_tenant_user(
     body: TenantUserCreateRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
     _: None = Depends(require(
         ModuleCode.ADMIN,
         PermissionResource.USERS,
@@ -443,6 +445,27 @@ async def create_tenant_user(
             f"Tenant {body.tenant_id} not visible to this session",
             tenant_id=str(body.tenant_id),
         )
+
+    # Post-commit Auth0 provisioning (Step CI-4b). Extract DETACHED PRIMITIVES from the
+    # ORM row HERE, while the request session is still open, and pass those locals to the
+    # background task. The session commits in dependency teardown and is gone before the
+    # task runs, so the task must never hold a session-bound ORM object or trigger a lazy
+    # load. (id/tenant_id/email are already-loaded column attributes; this is belt-and-
+    # suspenders independent of expire_on_commit.) The task is fail-safe: an Auth0 failure
+    # leaves the committed user INVITED / re-provisionable and never affects this response.
+    new_user_id: UUID = row.user.id
+    new_tenant_id: UUID = row.user.tenant_id
+    new_email: str = row.user.email
+    background_tasks.add_task(
+        provision_auth0_user,
+        request.app.state.auth0_management_client,
+        user_id=new_user_id,
+        tenant_id=new_tenant_id,
+        email=new_email,
+        user_type="TENANT",
+        request_id=request.state.request_id,
+    )
+
     return _detail_from_row(row)
 
 
