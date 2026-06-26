@@ -4330,6 +4330,23 @@ When an item moves out of Candidate scope into a Stage, log a corresponding deci
 
 ---
 
+# Out-of-band steps
+
+## Step CI-1: add unit-tier CI gate
+
+Status: done (local). Stands up the first CI gate for cortex-cm (`.github/workflows/ci.yml`); previously `.github/workflows/` did not exist. The no-secrets, unit-tier safety net required before the Auth0Client verifier change.
+
+The gate, on `pull_request` and `push` to `main` (job `unit`): checkout + setup-uv + `uv sync --group dev`; generate a throwaway RS256 keypair into `keys/` (CI-ephemeral, never committed, honoring `.gitignore`); `uv run mypy --strict src/admin_backend`; `uv run pytest tests/unit` excluding the two DB-bound files. It carries non-secret placeholder env (`DATABASE_URL` never connected to, `DB_SCHEMA`, `JWT_ISSUER`, `JWT_AUDIENCE`, `AUTH_CLIENT_MODE=STUB`, `ENVIRONMENT=development`, `APP_REGION`, `LOG_LEVEL`) that `get_settings()` needs at import time.
+
+Deferred, with reasons:
+
+- Ruff is omitted. It is not in the repo toolchain today (not a dependency, not configured); the code is far from ruff-clean, so a ruff step would fail the gate or force a sweeping unrelated reformat. Adopting ruff (dependency + config + one-time format pass + a lint step) is a separate future PR if wanted.
+- The integration tier is deferred to a fast-follow job (the 50 integration tests need a Postgres service container + `alembic upgrade head`).
+- `tests/unit/test_engine.py` and `tests/unit/test_session.py` require a live Postgres (misfiled under unit); excluded by path now and to be reclassified (moved to `tests/integration/` or marked) as a fast-follow.
+- Branch protection (require the `ci / unit` check on `main`) is applied via `gh` after merge, not from code.
+
+---
+
 # How to use this with Claude Code
 
 For each step:
