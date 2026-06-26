@@ -42,6 +42,7 @@ pattern ``routers/v1/tenants.py:_list_item_from_row`` uses for
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
@@ -78,6 +79,28 @@ from admin_backend.models.tenant_user_role_assignment import (
 )
 from admin_backend.repositories._errors import InvalidSortKeyError
 from admin_backend.repositories.tenants import TransitionResult
+
+
+class AcceptInvitationResult(StrEnum):
+    """Outcome of ``TenantUsersRepo.accept_invitation`` (Step CI-4c).
+
+    Distinct from ``TransitionResult`` because invite-accept has idempotent and
+    race outcomes the admin suspend/activate transition does not:
+
+      - ``ACTIVATED``: the guarded UPDATE flipped INVITED -> ACTIVE (a real change).
+      - ``ALREADY_ACTIVE``: the row is already ACTIVE (idempotent repeat call).
+      - ``NOT_INVITED``: the row exists but is SUSPENDED (cannot self-accept; 409).
+      - ``CONFLICT``: the row is still INVITED after a 0-row UPDATE (a concurrent
+        accept race; transient, retryable). Kept distinct so it is never
+        misclassified as ALREADY_ACTIVE or NOT_INVITED.
+      - ``NOT_FOUND``: no row for this (user_id, tenant_id), or RLS-invisible.
+    """
+
+    ACTIVATED = "ACTIVATED"
+    ALREADY_ACTIVE = "ALREADY_ACTIVE"
+    NOT_INVITED = "NOT_INVITED"
+    CONFLICT = "CONFLICT"
+    NOT_FOUND = "NOT_FOUND"
 
 
 # Module-level type alias: inside ``TenantUsersRepo``'s class scope,
@@ -1315,3 +1338,118 @@ class TenantUsersRepo:
             )
 
         return result_row, TransitionResult.OK
+
+    async def accept_invitation(
+        self,
+        session: AsyncSession,
+        *,
+        user_id: UUID,
+        tenant_id: UUID,
+        auth0_sub: str,
+        auth: AuthContext | None = None,
+        request_id: UUID | None = None,
+    ) -> tuple[TenantUserDetailRow | None, AcceptInvitationResult]:
+        """Self-service invite-accept (Step CI-4c): flip the caller's own row
+        INVITED -> ACTIVE and record ``auth0_sub`` in ONE atomic UPDATE.
+
+        ``auth0_sub`` is the caller's VERIFIED token sub (the endpoint passes
+        ``auth.sub``); ``user_id`` / ``tenant_id`` are the verified claims. None of
+        these come from request input. The single guarded UPDATE (``WHERE status =
+        'INVITED'`` and the status flip + ``auth0_sub`` write together) is
+        constraint-safe (``ck_tenant_users_auth0_sub_consistency`` is satisfied at
+        both ends) and idempotent (a repeat call matches no INVITED row).
+
+        This does NOT use ``transition()`` (which excludes INVITED and never writes
+        ``auth0_sub``). Audit (action ``ACCEPT_INVITATION``, actor = the user
+        themselves, pattern (b)) is emitted same-transaction ONLY on the activated
+        case. Returns ``(row, ACTIVATED)`` on the flip; otherwise ``(None, ...)``
+        with the classified outcome.
+        """
+        schema = get_settings().db_schema
+
+        result = await session.execute(
+            text(
+                f"""
+                UPDATE {schema}.tenant_users
+                   SET status = CAST('ACTIVE'
+                                AS {schema}.tenant_user_status_enum),
+                       auth0_sub = :auth0_sub,
+                       invitation_accepted_at = now(),
+                       updated_by_user_id = :user_id,
+                       updated_by_user_type = CAST('TENANT'
+                                              AS {schema}.actor_user_type_enum)
+                 WHERE id = :user_id
+                   AND status = CAST('INVITED'
+                                AS {schema}.tenant_user_status_enum)
+                   AND tenant_id = :tenant_id
+                """
+            ),
+            {"auth0_sub": auth0_sub, "user_id": user_id, "tenant_id": tenant_id},
+        )
+
+        # A DML statement's session.execute returns a CursorResult whose
+        # ``rowcount`` is the matched-row count; the async execute() return is typed
+        # as the base Result (no rowcount), so this access is type-ignored narrowly.
+        if result.rowcount == 1:  # type: ignore[attr-defined]
+            # Raw UPDATE bypasses the ORM identity map; expire so a re-read is fresh.
+            session.expire_all()
+            result_row = await self.get_by_id(session, user_id)
+
+            # Same-transaction audit (LD2), activated case only. Actor = the user
+            # (self-activation, pattern (b) updated_by). Mirrors transition().
+            if (
+                auth is not None
+                and request_id is not None
+                and result_row is not None
+            ):
+                tenant_name = await self._tenant_name_for(session, tenant_id)
+                await emit_audit_event(
+                    session,
+                    auth=auth,
+                    action="ACCEPT_INVITATION",
+                    resource_type="TENANT_USER",
+                    resource_id=user_id,
+                    resource_label=result_row.user.full_name,
+                    result_type=AuditResultType.SUCCESS,
+                    details=build_success_details_for_transition(
+                        before_status="INVITED",
+                        after_status="ACTIVE",
+                    ),
+                    tenant_id=tenant_id,
+                    tenant_name=tenant_name,
+                    request_id=request_id,
+                    route_to_platform=False,
+                )
+            elif auth is not None or request_id is not None:
+                raise ValueError(
+                    "auth and request_id must be provided together for audit "
+                    "emission, or both omitted for repo-level test paths"
+                )
+
+            return result_row, AcceptInvitationResult.ACTIVATED
+
+        # 0 rows updated: classify by the row's current status (no lock needed; the
+        # guarded UPDATE already failed to match). RLS scopes this to the caller's
+        # tenant; the explicit tenant_id keeps it self-only.
+        current = (
+            await session.execute(
+                text(
+                    f"SELECT status FROM {schema}.tenant_users "
+                    "WHERE id = :user_id AND tenant_id = :tenant_id"
+                ),
+                {"user_id": user_id, "tenant_id": tenant_id},
+            )
+        ).first()
+
+        if current is None:
+            return None, AcceptInvitationResult.NOT_FOUND
+        status = str(current.status)
+        if status == "ACTIVE":
+            return None, AcceptInvitationResult.ALREADY_ACTIVE
+        if status == "INVITED":
+            # Still INVITED after a 0-row UPDATE: a concurrent accept raced between
+            # the UPDATE and this read. Do not misclassify it as already-active or
+            # not-invited; surface a transient, retryable conflict.
+            return None, AcceptInvitationResult.CONFLICT
+        # SUSPENDED (or any other non-acceptable state): cannot self-accept.
+        return None, AcceptInvitationResult.NOT_INVITED

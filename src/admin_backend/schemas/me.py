@@ -24,6 +24,8 @@ instance via ``model_validate(...)`` without restating the fields.
 explicit Pydantic schema edits, not silent acceptance of unknown
 attributes.
 """
+from uuid import UUID
+
 from pydantic import BaseModel, ConfigDict
 
 
@@ -54,3 +56,19 @@ class MeCanDoResponse(BaseModel):
 
     allowed: bool
     reason_code: str
+
+
+class AcceptInvitationResponse(BaseModel):
+    """Result for ``POST /me/accept-invitation`` (Step CI-4c).
+
+    Uniform 200 body for both the first-accept (INVITED -> ACTIVE) and the
+    idempotent repeat (already ACTIVE) cases, so the SPA needs no branch:
+    ``status`` is always ``ACTIVE``. ``activated`` is True only when this call
+    performed the flip, False on an idempotent repeat (observability only)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    user_id: UUID
+    tenant_id: UUID
+    status: str
+    activated: bool
