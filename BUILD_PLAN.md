@@ -4381,6 +4381,20 @@ Changed: new `src/admin_backend/auth/auth0_management.py`; `errors.py` (`Auth0Ma
 
 Deferred (separate steps, not touched): user-creation wiring (4b), the user-write repos, the invite-accept callback (4c), the Login Action (4d).
 
+## Step CI-4b: provision Auth0 user on tenant-user creation (post-commit background task)
+
+Status: done (local). Wires Auth0 provisioning into tenant-user creation as a POST-COMMIT FastAPI background task. When CM creates a tenant_user (INVITED), after the DB row commits (the session commits in dependency teardown; BackgroundTasks fire after the response and after teardown), the task uses the Step 4a Auth0ManagementClient to create the Auth0 user (app_metadata `{tenant_id, user_type:"TENANT", user_id}`) and issue an invitation ticket.
+
+Decisions (as approved): (A) the management client is constructed on `app.state.auth0_management_client` only when M2M config is present (None otherwise, optional shutdown `aclose()`), so the task no-ops in STUB/dev and existing tests need no Auth0 config; (B) structured log only for 4b (the provisioning-outcome DB audit event is deferred; the create is already audited in-transaction); (C) the task function is tested directly with a fake client, no network/no DB.
+
+Post-commit safety: `create()` returns `get_by_id(...)`, whose `.user` is a session-bound `TenantUser` ORM instance. The handler extracts `id/tenant_id/email` into local primitives WHILE the session is open and passes those locals to `add_task` (belt-and-suspenders; the factory is `expire_on_commit=False` so they would not reload, but the task must never hold a session-bound object). The task holds only detached primitives.
+
+Fail-safe: `provision_auth0_user` never raises. On `Auth0ManagementError` it logs (operation/user_id/tenant_id/request_id, NO secret) and returns; the committed row stays a valid re-provisionable INVITED user. It does NOT write `auth0_sub` (forbidden while INVITED; that is the invite-accept callback, Step 4c), does NOT roll back, and does NOT affect the 201 response.
+
+Changed: new `src/admin_backend/auth/provisioning.py`; `main.py` (lifespan client + optional shutdown aclose); `routers/v1/tenant_users.py` (additive `BackgroundTasks` param + one `add_task`; create transaction / in-repo audit / 201 response unchanged); `docs/architecture_RBAC.md` (invite-accept note). New `tests/unit/test_provisioning.py` (4 tests: success / create_user failure / ticket failure / unconfigured, all no-network/no-DB).
+
+Deferred (separate steps): the invite-accept callback (4c, records auth0_sub + INVITED->ACTIVE), the Login Action (4d), and platform-user provisioning (no platform_users create endpoint exists; a future question).
+
 ---
 
 # How to use this with Claude Code

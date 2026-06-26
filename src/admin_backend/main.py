@@ -31,6 +31,7 @@ from admin_backend.audit.emit import (
     route_template_for_request,
 )
 from admin_backend.auth.auth0 import Auth0Client
+from admin_backend.auth.auth0_management import Auth0ManagementClient
 from admin_backend.auth.base import AuthClient
 from admin_backend.auth.stub import StubAuthClient
 from admin_backend.config import get_settings
@@ -106,8 +107,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         auth_client = Auth0Client(settings)
     app.state.auth_client = auth_client
 
+    # Auth0 Management API client for post-commit user provisioning (Step CI-4b).
+    # Constructed only when the M2M config is present; None otherwise, so STUB/dev
+    # and existing tests need no Auth0 config and the provisioning background task
+    # no-ops cleanly.
+    auth0_management_client: Auth0ManagementClient | None
+    if settings.auth0_m2m_client_id and settings.auth0_m2m_client_secret is not None:
+        auth0_management_client = Auth0ManagementClient(settings)
+    else:
+        auth0_management_client = None
+    app.state.auth0_management_client = auth0_management_client
+
     yield
 
+    if auth0_management_client is not None:
+        await auth0_management_client.aclose()
     await engine.dispose()
 
 
