@@ -1,0 +1,65 @@
+name: ci
+
+# Unit-tier CI gate (Step CI-1): the no-secrets safety net required before the
+# Auth0Client verifier change. Runs the DB-free unit tests plus mypy --strict, which
+# is what the repo enforces today (scripts/check_setup.sh, docs/architecture.md).
+#
+# Deliberately scoped:
+#   - No ruff: ruff is not part of this repo's toolchain yet (not a dependency, not
+#     configured). Adopting it is a separate future PR (see BUILD_PLAN.md Step CI-1).
+#   - No integration tests: tests/integration needs Postgres + migrations; that tier
+#     is a deferred fast-follow (a second job with a Postgres service container).
+#   - tests/unit/test_engine.py and tests/unit/test_session.py are excluded: they
+#     require a live Postgres (misfiled under unit). Reclassifying them is a
+#     fast-follow; until then they are excluded by path here.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    env:
+      # Non-secret config read at import time by get_settings() (admin_backend.config
+      # instantiates Settings() when models are imported). The unit gate never opens a
+      # database connection (the DB-bound files are excluded below), so DATABASE_URL is
+      # a syntactically valid placeholder that is never connected to. ENVIRONMENT and
+      # AUTH_CLIENT_MODE satisfy the production-guard validators in config.py (stub auth
+      # is allowed only outside production). Values mirror .env.example.
+      DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ci_unused
+      DB_SCHEMA: core
+      JWT_ISSUER: https://stub-issuer.local/
+      JWT_AUDIENCE: https://api.ithina.com
+      AUTH_CLIENT_MODE: STUB
+      ENVIRONMENT: development
+      APP_REGION: LOCAL
+      LOG_LEVEL: INFO
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Sync dependencies (dev group)
+        run: uv sync --group dev
+
+      - name: Generate throwaway RS256 keypair (CI-only, never committed)
+        # The stub-auth unit tests read keys/jwt_{private,public}.pem (config.py
+        # defaults). keys/ and *.pem are gitignored; this keypair exists only on the
+        # runner for the duration of the job and is never uploaded or committed.
+        run: |
+          mkdir -p keys
+          openssl genrsa -out keys/jwt_private.pem 2048
+          openssl rsa -in keys/jwt_private.pem -pubout -out keys/jwt_public.pem
+
+      - name: Type check (mypy --strict)
+        run: uv run mypy --strict src/admin_backend
+
+      - name: Unit tests (DB-free)
+        # test_engine.py and test_session.py require a live Postgres; excluded here
+        # (see header). The remaining unit suite is DB-free and needs no secrets.
+        run: uv run pytest tests/unit --ignore=tests/unit/test_engine.py --ignore=tests/unit/test_session.py
