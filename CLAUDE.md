@@ -476,12 +476,14 @@ The schema name is independent per environment. Local can be `core`. Dev can be 
 
 **What.** JWTs (from Auth0 in production, from stub in build phase) carry only identity-shape claims. The custom claims that appear in the JWT are exactly:
 
-- `https://ithina.com/tenant_id` — UUID, the user's home tenant. NULL for platform users.
-- `https://ithina.com/user_type` — enum `PLATFORM` or `TENANT`.
-- `https://ithina.com/user_id` — UUID, the row id in `platform_users` (when `user_type=PLATFORM`) or `tenant_users` (when `user_type=TENANT`).
-- `https://ithina.com/email` — string, the user's email.
+- `https://sevyn8.com/tenant_id` - UUID, the user's home tenant. NULL for platform users.
+- `https://sevyn8.com/user_type` - enum `PLATFORM` or `TENANT`.
+- `https://sevyn8.com/user_id` - UUID, the row id in `platform_users` (when `user_type=PLATFORM`) or `tenant_users` (when `user_type=TENANT`).
+- `https://sevyn8.com/email` - string, the user's email.
 
 Plus standard JWT claims (`sub`, `iss`, `aud`, `exp`, `iat`, `nbf`).
+
+**Namespace correction (Step CI-2).** The custom-claim namespace was corrected from the client domain `https://ithina.com` to our domain `https://sevyn8.com`. The Auth0 Login Action and the DIS verifier must agree on this exact claim prefix, so it is pinned here.
 
 No role names, no permission codes, no org-node anchors, no feature flags. All authorisation data resolves in-app from the DB per request.
 

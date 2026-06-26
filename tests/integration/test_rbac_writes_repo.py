@@ -26,6 +26,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from admin_backend.auth.context import AuthContext
+from admin_backend.auth.stub import CLAIM_USER_ID
 from admin_backend.config import get_settings
 from admin_backend.db.session import get_tenant_session
 from admin_backend.errors import InternalInvariantViolationError
@@ -274,7 +275,7 @@ async def test_rw4_layer_2_tripwire_raises_internal_invariant(
     payload = pyjwt.decode(
         super_admin_jwt, options={"verify_signature": False}
     )
-    actor_user_id = uuid.UUID(payload["https://ithina.com/user_id"])
+    actor_user_id = uuid.UUID(payload[CLAIM_USER_ID])
 
     raised: Exception | None = None
     try:
@@ -335,7 +336,7 @@ async def test_rw5_diff_replace_preserves_audit_repo_direct(
     payload = pyjwt.decode(
         super_admin_jwt, options={"verify_signature": False}
     )
-    actor_user_id = uuid.UUID(payload["https://ithina.com/user_id"])
+    actor_user_id = uuid.UUID(payload[CLAIM_USER_ID])
 
     repo = RolesRepo()
     body = RoleUpdateRequest(permission_ids=[p_keep.id, p_add.id])
@@ -404,7 +405,7 @@ async def test_rw6_error_mid_flow_rolls_back(
     payload = pyjwt.decode(
         super_admin_jwt, options={"verify_signature": False}
     )
-    actor_user_id = uuid.UUID(payload["https://ithina.com/user_id"])
+    actor_user_id = uuid.UUID(payload[CLAIM_USER_ID])
 
     repo = RolesRepo()
     # PATCH removes OVERRIDE.GLOBAL (current holder) + adds p_new.
