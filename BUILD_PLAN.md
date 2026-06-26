@@ -4345,6 +4345,14 @@ Deferred, with reasons:
 - `tests/unit/test_engine.py` and `tests/unit/test_session.py` require a live Postgres (misfiled under unit); excluded by path now and to be reclassified (moved to `tests/integration/` or marked) as a fast-follow.
 - Branch protection (require the `ci / unit` check on `main`) is applied via `gh` after merge, not from code.
 
+## Step CI-2: rename JWT claim namespace ithina.com to sevyn8.com
+
+Status: done (local). Surgical rename of the JWT custom-claim namespace from the client domain `https://ithina.com` to our domain `https://sevyn8.com`. The Auth0 Login Action and the DIS verifier must agree on this exact claim prefix. This is NOT the general de-Ithina work (a separate deferred task per FORK_ANCESTOR.md, 163 files, infra-bearing).
+
+Changed: `src/admin_backend/auth/stub.py` (`NAMESPACE` literal + docstring; the four `CLAIM_*` derive via f-string and updated automatically); `tests/integration/test_rbac_writes_repo.py` (three sites now use the imported `CLAIM_USER_ID` constant instead of a hardcoded literal, so the namespace cannot drift again); `docs/architecture.md` (the claim-namespace lines in the diagram, the prose reference, and the JWT sample, plus deletion of the sample `roles` claim line which contradicts D-24's identity-only token); `CLAUDE.md` D-24 (the four claim descriptions + a one-line correction note).
+
+Left untouched (out of scope, deferred to de-Ithina / the Auth0Client step): the architecture.md `iss`/`aud` sample values (`https://ithina.auth0.com/`, `https://api.ithina.com`); GCP project names; the database name `ithina_platform_db`; the `ithina-postgres` container; deployment hostnames; the cookie domain; fixture emails; and the CI workflow `JWT_AUDIENCE` placeholder.
+
 ---
 
 # How to use this with Claude Code

@@ -9,10 +9,10 @@ Step 2.3 middleware): the same verify(jwt_string) -> AuthContext
 contract works for both clients. No handler-code change required.
 
 Custom claim namespaces per D-24:
-    https://ithina.com/tenant_id
-    https://ithina.com/user_type
-    https://ithina.com/user_id
-    https://ithina.com/email
+    https://sevyn8.com/tenant_id
+    https://sevyn8.com/user_type
+    https://sevyn8.com/user_id
+    https://sevyn8.com/email
 """
 from uuid import UUID
 
@@ -29,7 +29,7 @@ from admin_backend.errors import (
 
 # Custom claim namespaces per D-24. Module-level constants so tests
 # (and future Auth0 management code) can reference the exact strings.
-NAMESPACE = "https://ithina.com"
+NAMESPACE = "https://sevyn8.com"
 CLAIM_TENANT_ID = f"{NAMESPACE}/tenant_id"
 CLAIM_USER_TYPE = f"{NAMESPACE}/user_type"
 CLAIM_USER_ID = f"{NAMESPACE}/user_id"

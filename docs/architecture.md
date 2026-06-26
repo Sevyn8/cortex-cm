@@ -178,8 +178,8 @@ Detailed walk-through of a single authenticated read request, from HTTPS ingress
 |    - Calls StubAuthClient.verify(jwt) (or Auth0Client in prod)       |
 |    - Validates signature (RS256), iss, aud, exp                      |
 |    - Extracts custom claims:                                         |
-|        https://ithina.com/tenant_id                                  |
-|        https://ithina.com/user_type                                  |
+|        https://sevyn8.com/tenant_id                                  |
+|        https://sevyn8.com/user_type                                  |
 |    - Builds AuthContext, sets request.state.auth                     |
 |    - On failure: returns 401 with structured error                   |
 +----------------------+-----------------------------------------------+
@@ -289,7 +289,7 @@ A single FastAPI dependency `get_tenant_session()` is the only path that opens a
 
 `tenant_id` reaches the backend only from:
 
-- Verified JWT claims (for tenant users; the JWT contains `https://ithina.com/tenant_id`).
+- Verified JWT claims (for tenant users; the JWT contains `https://sevyn8.com/tenant_id`).
 - Verified path parameters (for staff cross-tenant operations like `/api/v1/admin/tenants/{tenant_id}/users`).
 
 Never from request body, query string, custom headers, or any caller-supplied untrusted source.
@@ -323,10 +323,9 @@ JWT shape (Auth0-compatible custom claim namespace):
   "sub": "auth0|abc123...",
   "iat": 1714492800,
   "exp": 1714579200,
-  "https://ithina.com/tenant_id": "<uuid>",        // null for staff
-  "https://ithina.com/user_type": "TENANT",        // or "PLATFORM"
-  "https://ithina.com/user_id": "<uuid>",
-  "https://ithina.com/roles": ["Owner"]            // role codes
+  "https://sevyn8.com/tenant_id": "<uuid>",        // null for staff
+  "https://sevyn8.com/user_type": "TENANT",        // or "PLATFORM"
+  "https://sevyn8.com/user_id": "<uuid>"
 }
 ```
 
