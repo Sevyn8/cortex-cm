@@ -4367,6 +4367,20 @@ Changed: new `src/admin_backend/auth/auth0.py`, `auth/claims.py`, `auth/base.py`
 
 Deferred (separate steps, not touched here): wiring DIS, authoring the Auth0 Login Action, and the production_must_use_auth0 / issuer validators (left as-is, they already guard correctly).
 
+## Step CI-4a: Auth0 Management API client (provisioning plumbing)
+
+Status: done (local). Implements `Auth0ManagementClient` (src/admin_backend/auth/auth0_management.py), the standalone plumbing that lets CM create/invite Auth0 users via the Management API (M2M client-credentials). Step 4a of the CM<->Auth0 provisioning arc; 4b (wire into user-creation post-commit), 4c (invite-accept callback), 4d (Login Action) are separate later steps and are NOT touched here. The FIRST outbound HTTP from CM; `httpx>=0.27` was already a dependency (no new dep).
+
+Operations: `_get_token` (client-credentials, cached until a refresh margin before expiry, REQUIRED for the 1000-tokens/month quota), `create_user(email, app_metadata)`, `create_invitation_ticket(auth0_user_id)`, `get_user`, `find_user_by_email`. Domain-agnostic (the caller passes app_metadata = {tenant_id, user_type, user_id}).
+
+Decisions (as approved): (1) `SecretStr` for `auth0_m2m_client_secret`, rest plain str; (2) `auth0_db_connection` configurable, default `Username-Password-Authentication`; (3) new `Auth0ManagementError(ServerError)`; (4) constructor-injected `httpx.AsyncClient` over `httpx.MockTransport` + an injected clock for the cache test; (5) the architecture.md outbound-network line updated to include the Auth0 Management API.
+
+Holds honored: the M2M secret (SecretStr) and the bearer token never enter error context, logs, or repr (Auth0ManagementError context = operation/status/cause-type only); no bare httpx error escapes the single `_request` chokepoint (every non-2xx and every transport error maps to Auth0ManagementError); explicit 10s httpx timeout; defensive token-response handling (a missing/non-numeric `expires_in` is fail-safe: used once, re-fetched next call, never cached forever or crashing).
+
+Changed: new `src/admin_backend/auth/auth0_management.py`; `errors.py` (`Auth0ManagementError`); `config.py` (five optional/None-defaulted Auth0 Management fields, the secret as SecretStr); `.env.example` (placeholders, never the real secret); `docs/architecture.md` (outbound-network line). New `tests/unit/test_auth0_management.py` (14 tests, DB-free, no network, MockTransport + injected clock).
+
+Deferred (separate steps, not touched): user-creation wiring (4b), the user-write repos, the invite-accept callback (4c), the Login Action (4d).
+
 ---
 
 # How to use this with Claude Code

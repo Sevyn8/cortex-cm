@@ -526,7 +526,7 @@ Cloud Run's runtime SA holds `roles/cloudsql.client` and `roles/secretmanager.se
 ## Network and security
 
 - Inbound: HTTPS only, via GCE Ingress (managed cert) for v0.
-- Outbound: only to Cloud SQL (via Auth Proxy) and GCP Secret Manager.
+- Outbound: Cloud SQL (via Auth Proxy), GCP Secret Manager, and the Auth0 Management API (`https://sevyn8.us.auth0.com`, for user provisioning; the first outbound HTTP, added in Step CI-4a).
 - Service account: per-deployment, with minimum-needed roles (`roles/cloudsql.client`, `roles/secretmanager.secretAccessor`). No broader IAM.
 - Workload Identity binds the GKE service account to the GCP service account. No service account keys checked in.
 

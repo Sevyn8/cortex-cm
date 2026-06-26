@@ -790,6 +790,25 @@ class AppRolePrivilegeError(ServerError):
     """
 
 
+class Auth0ManagementError(ServerError):
+    """An Auth0 Management API call failed (Step CI-4a).
+
+    Raised by Auth0ManagementClient for any outbound failure: a non-2xx
+    Auth0 response, a network/transport/timeout error, a token-acquisition
+    failure, or missing M2M configuration. ServerError parent: an upstream
+    identity-provider failure is our/infra's concern, not the caller's, and
+    the wire emits the generic INTERNAL_ERROR shape.
+
+    The provisioning caller (Step 4b, post-commit) catches this and leaves
+    the user INVITED / re-provisionable rather than failing the request.
+
+    SECURITY: the constructor ``context`` carries only non-sensitive
+    diagnostics (operation, HTTP status, cause-type). The M2M client secret
+    and the bearer token MUST NEVER be passed into ``context`` (or logged):
+    they are not request data and would leak into log sinks.
+    """
+
+
 def build_error_payload(
     exc: AdminBackendError, request_id: str | None
 ) -> tuple[int, dict[str, Any], dict[str, str]]:
