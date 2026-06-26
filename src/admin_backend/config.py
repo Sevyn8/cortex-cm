@@ -28,7 +28,7 @@ from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -97,6 +97,19 @@ class Settings(BaseSettings):
     # derives it from jwt_issuer (issuer + .well-known/jwks.json, the Auth0 convention).
     # Stub mode never reads it. Documented in .env.example as AUTH0_JWKS_URL.
     auth0_jwks_url: str | None = None
+
+    # Auth0 Management API (Step CI-4a, provisioning plumbing). All optional/None so STUB
+    # mode and existing tests need nothing. The M2M client secret is SecretStr so it never
+    # appears in a Settings repr or log; read it with .get_secret_value() at the one use
+    # site (the token request). auth0_mgmt_audience / auth0_token_endpoint are explicit but
+    # the client derives them from jwt_issuer when unset (issuer + api/v2/ and oauth/token).
+    # auth0_db_connection is the Auth0 database-connection name a created user belongs to;
+    # the client defaults to "Username-Password-Authentication" when unset.
+    auth0_m2m_client_id: str | None = None
+    auth0_m2m_client_secret: SecretStr | None = None
+    auth0_mgmt_audience: str | None = None
+    auth0_token_endpoint: str | None = None
+    auth0_db_connection: str | None = None
 
     # Application
     app_region: Literal["EU", "US", "LOCAL"] = "LOCAL"
