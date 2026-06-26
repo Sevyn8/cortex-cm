@@ -32,7 +32,7 @@ jobs:
       DATABASE_URL: postgresql+psycopg://ci:ci@localhost:5432/ci_unused
       DB_SCHEMA: core
       JWT_ISSUER: https://stub-issuer.local/
-      JWT_AUDIENCE: https://api.ithina.com
+      JWT_AUDIENCE: https://api.cortex.sevyn8.com
       AUTH_CLIENT_MODE: STUB
       ENVIRONMENT: development
       APP_REGION: LOCAL

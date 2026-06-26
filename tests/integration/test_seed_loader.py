@@ -240,7 +240,7 @@ def test_l4_seed_refuses_production(monkeypatch):
     """
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("AUTH_CLIENT_MODE", "AUTH0")
-    monkeypatch.setenv("JWT_ISSUER", "https://auth.ithina.com/")
+    monkeypatch.setenv("JWT_ISSUER", "https://sevyn8.us.auth0.com/")
     monkeypatch.setattr("sys.argv", ["seed_dev_data"])
     # Force settings re-read since get_settings uses lru_cache.
     from admin_backend.config import get_settings

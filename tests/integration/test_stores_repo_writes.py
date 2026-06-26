@@ -136,7 +136,7 @@ def _platform_auth(actor_id: UUID) -> AuthContext:
     return AuthContext(  # type: ignore[call-arg]
         sub="test-sub",
         iss="https://stub-issuer.local/",
-        aud="https://api.ithina.com",
+        aud="https://api.cortex.sevyn8.com",
         exp=9999999999,
         user_id=actor_id,
         tenant_id=None,
@@ -150,7 +150,7 @@ def _tenant_auth(actor_id: UUID, tenant_id: UUID) -> AuthContext:
     return AuthContext(  # type: ignore[call-arg]
         sub="test-sub",
         iss="https://stub-issuer.local/",
-        aud="https://api.ithina.com",
+        aud="https://api.cortex.sevyn8.com",
         exp=9999999999,
         user_id=actor_id,
         tenant_id=tenant_id,

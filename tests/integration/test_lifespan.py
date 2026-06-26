@@ -107,11 +107,11 @@ def test_l3_production_with_real_issuer_passes_validation(
     """
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("AUTH_CLIENT_MODE", "AUTH0")
-    monkeypatch.setenv("JWT_ISSUER", "https://ithina.us.auth0.com/")
+    monkeypatch.setenv("JWT_ISSUER", "https://sevyn8.us.auth0.com/")
     s = Settings()  # type: ignore[call-arg]
     assert s.environment == "production"
     assert s.auth_client_mode == "AUTH0"
-    assert s.jwt_issuer == "https://ithina.us.auth0.com/"
+    assert s.jwt_issuer == "https://sevyn8.us.auth0.com/"
 
 
 # ---------------------------------------------------------------------------
@@ -161,7 +161,7 @@ async def test_l5_auth0_mode_raises_with_pending_message(
     NotImplementedError mentioning the pending Auth0 work."""
     monkeypatch.setenv("ENVIRONMENT", "production")
     monkeypatch.setenv("AUTH_CLIENT_MODE", "AUTH0")
-    monkeypatch.setenv("JWT_ISSUER", "https://ithina.us.auth0.com/")
+    monkeypatch.setenv("JWT_ISSUER", "https://sevyn8.us.auth0.com/")
 
     app = create_app()
     with pytest.raises(NotImplementedError) as exc_info:

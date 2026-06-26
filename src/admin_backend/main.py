@@ -30,6 +30,8 @@ from admin_backend.audit.emit import (
     request_id_for_request,
     route_template_for_request,
 )
+from admin_backend.auth.auth0 import Auth0Client
+from admin_backend.auth.base import AuthClient
 from admin_backend.auth.stub import StubAuthClient
 from admin_backend.config import get_settings
 from admin_backend.db.engine import (
@@ -97,15 +99,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     session_factory = create_session_factory(engine)
     app.state.session_factory = session_factory
 
+    auth_client: AuthClient
     if settings.auth_client_mode == "STUB":
         auth_client = StubAuthClient(settings)
     else:
-        raise NotImplementedError(
-            "Auth0Client implementation pending Auth0 tenant "
-            "configuration (expected within a few days). Until it "
-            "lands, AUTH_CLIENT_MODE must be 'STUB'. Production "
-            "cutover blocks on Auth0Client per D-07."
-        )
+        auth_client = Auth0Client(settings)
     app.state.auth_client = auth_client
 
     yield

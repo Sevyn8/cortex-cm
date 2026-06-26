@@ -285,6 +285,8 @@ Decisions are listed with reasoning and reconsider conditions. Decisions are NOT
 
 **Reconsider if.** Auth0 ownership lands with a different decision (different IdP, in-house, etc.).
 
+**Update (Step CI-3).** The production swap is implemented. `Auth0Client` (src/admin_backend/auth/auth0.py) verifies real Auth0 RS256 tokens against the Auth0 JWKS endpoint and is selected by `AUTH_CLIENT_MODE=AUTH0` in main.py (the prior NotImplementedError is gone). It satisfies the shared `AuthClient` Protocol (auth/base.py) that both clients implement, and extracts the SAME identity-only claims as the stub via the shared `claims_to_auth_context` helper (auth/claims.py); per D-24 there is no roles claim. Key acquisition is the only difference: the stub reads a local PEM, Auth0 fetches the signing key from JWKS by the token's kid (`jwt.PyJWKClient`, no new dependency). The verifier is FAIL CLOSED: any key-acquisition or verification failure (kid not found, JWKS unreachable, any PyJWKClientError, any jwt exception) raises a typed auth error and rejects; no path returns an AuthContext on failure. The JWKS URL comes from the optional `AUTH0_JWKS_URL` setting, or is derived from `JWT_ISSUER` (issuer + .well-known/jwks.json). Wiring DIS and authoring the Auth0 Login Action are separate later steps.
+
 ### D-08 — Middleware (auth + request context) and dependency (`get_tenant_session`)
 
 **What.** ASGI middleware for auth and request context. FastAPI dependency for tenant-scoped session.
