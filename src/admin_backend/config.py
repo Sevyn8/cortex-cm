@@ -93,6 +93,10 @@ class Settings(BaseSettings):
     jwt_public_key_path: Path = Path("keys/jwt_public.pem")
     jwt_private_key_path: Path = Path("keys/jwt_private.pem")
     token_default_ttl_seconds: int = 3600
+    # Auth0 JWKS endpoint (AUTH_CLIENT_MODE=AUTH0). Optional: when unset, Auth0Client
+    # derives it from jwt_issuer (issuer + .well-known/jwks.json, the Auth0 convention).
+    # Stub mode never reads it. Documented in .env.example as AUTH0_JWKS_URL.
+    auth0_jwks_url: str | None = None
 
     # Application
     app_region: Literal["EU", "US", "LOCAL"] = "LOCAL"

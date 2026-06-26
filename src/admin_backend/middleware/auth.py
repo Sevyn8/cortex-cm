@@ -27,7 +27,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from admin_backend.auth.stub import StubAuthClient
+from admin_backend.auth.base import AuthClient
 from admin_backend.errors import (
     AdminBackendError,
     AuthMissingError,
@@ -64,7 +64,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 raise AuthMissingError("Bearer token is empty")
 
             # Point-of-use type annotation; app.state is dynamically typed.
-            auth_client: StubAuthClient = request.app.state.auth_client
+            auth_client: AuthClient = request.app.state.auth_client
             auth_context = auth_client.verify(jwt_string)
             request.state.auth = auth_context
         except AdminBackendError as exc:

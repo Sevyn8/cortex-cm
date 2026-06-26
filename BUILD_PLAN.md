@@ -4353,6 +4353,20 @@ Changed: `src/admin_backend/auth/stub.py` (`NAMESPACE` literal + docstring; the 
 
 Left untouched (out of scope, deferred to de-Ithina / the Auth0Client step): the architecture.md `iss`/`aud` sample values (`https://ithina.auth0.com/`, `https://api.ithina.com`); GCP project names; the database name `ithina_platform_db`; the `ithina-postgres` container; deployment hostnames; the cookie domain; fixture emails; and the CI workflow `JWT_AUDIENCE` placeholder.
 
+## Step CI-3: implement Auth0Client (production JWKS verifier)
+
+Status: done (local). Implements `Auth0Client`, the production JWT verifier that replaces the NotImplementedError in main.py's lifespan (`AUTH_CLIENT_MODE=AUTH0`). It verifies real Auth0 RS256 tokens against the Auth0 JWKS endpoint and extracts the SAME identity-only claims as StubAuthClient (D-24, no roles). No new dependency (`jwt.PyJWKClient` ships with pyjwt[crypto]).
+
+Decisions (as approved): (1) a shared `AuthClient` Protocol (`auth/base.py`) both clients satisfy, annotated at the middleware and main factory; (2) an optional `auth0_jwks_url` setting (env `AUTH0_JWKS_URL`) with an issuer-derived fallback; (4) the identity-claim logic extracted to `auth/claims.py` (`claims_to_auth_context` + `NAMESPACE`/`CLAIM_*`), with stub.py re-exporting the constants so existing import sites are unchanged.
+
+Security invariant: FAIL CLOSED. Every key-acquisition or verification failure (kid not found, JWKS unreachable, any PyJWKClientError, any jwt exception) raises a typed auth error and rejects; no path returns an AuthContext on failure. Proven by the kid-not-found and JWKS-unreachable tests.
+
+Behavior-preserving extraction: the stub's 21 existing tests stay green after the rewire (the proof the extraction changed nothing).
+
+Changed: new `src/admin_backend/auth/auth0.py`, `auth/claims.py`, `auth/base.py`; `auth/stub.py` (re-export + call the shared helper); `config.py` (`auth0_jwks_url`); `main.py` (construct Auth0Client, remove NotImplementedError); `middleware/auth.py` (annotate `AuthClient`). New `tests/unit/test_auth0_client.py` (16 tests, DB-free, no network, fake-injected JWKS). Stale-fixture cleanup: `test_lifespan.py`, `test_stores_repo_writes.py`, `test_seed_loader.py`, `.github/workflows/ci.yml`, `.env.example`. Doc: D-07 updated.
+
+Deferred (separate steps, not touched here): wiring DIS, authoring the Auth0 Login Action, and the production_must_use_auth0 / issuer validators (left as-is, they already guard correctly).
+
 ---
 
 # How to use this with Claude Code
