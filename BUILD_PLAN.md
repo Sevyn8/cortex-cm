@@ -4395,6 +4395,14 @@ Changed: new `src/admin_backend/auth/provisioning.py`; `main.py` (lifespan clien
 
 Deferred (separate steps): the invite-accept callback (4c, records auth0_sub + INVITED->ACTIVE), the Login Action (4d), and platform-user provisioning (no platform_users create endpoint exists; a future question).
 
+## Step CI-4b-fix: use cm_user_id app_metadata key (Auth0 reserves user_id)
+
+Status: done (local). Bug found by live testing: Step CI-4b built the Auth0 app_metadata with the key `user_id`, which Auth0 rejects as a reserved/restricted app_metadata property ("Invalid property app_metadata.user_id"), so provisioning failed against live Auth0 on every tenant-user creation. Fix: write the key as `cm_user_id`. The deployed Auth0 Login Action reads `md.cm_user_id` and stamps it as the `https://sevyn8.com/user_id` claim, so the token claim CM's CI-3 verifier reads is unchanged (still `user_id`); only the app_metadata write-key changes.
+
+Changed (three files): `src/admin_backend/auth/provisioning.py` (the app_metadata key `user_id` -> `cm_user_id`, value unchanged, plus a one-line comment); `tests/unit/test_provisioning.py` (the success-path assertion key); `src/admin_backend/auth/auth0_management.py` (the two docstring mentions of the example app_metadata shape, so the documented shape matches the Auth0-safe key).
+
+Not changed: the log-context `user_id` field, the `created["user_id"]` Auth0 response read, the `test_auth0_management.py` opaque pass-through blob, and nothing about the token claim / CI-3 verifier / AuthContext. Grep confirmed no other place writes or asserts an app_metadata `user_id` key.
+
 ---
 
 # How to use this with Claude Code

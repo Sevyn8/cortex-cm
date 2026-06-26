@@ -57,7 +57,7 @@ async def test_success_creates_user_then_ticket() -> None:
     assert app_metadata == {
         "tenant_id": str(_TENANT_ID),
         "user_type": "TENANT",
-        "user_id": str(_USER_ID),
+        "cm_user_id": str(_USER_ID),
     }
     # invitation ticket issued for the returned Auth0 user_id (sub).
     assert client.ticket_calls == ["auth0|abc123"]

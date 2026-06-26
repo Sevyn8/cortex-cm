@@ -52,10 +52,12 @@ async def provision_auth0_user(
 
     # app_metadata is JSON, so UUIDs are serialized to strings. user_type is "TENANT"
     # (this is the tenant-user creation path).
+    # Auth0 reserves "user_id" as an app_metadata property; the Login Action maps
+    # cm_user_id to the https://sevyn8.com/user_id claim, so the token claim is unchanged.
     app_metadata = {
         "tenant_id": str(tenant_id),
         "user_type": user_type,
-        "user_id": str(user_id),
+        "cm_user_id": str(user_id),
     }
 
     try:
