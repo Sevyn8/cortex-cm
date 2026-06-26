@@ -6,7 +6,7 @@ CM<->Auth0 provisioning arc: the standalone client only. Wiring it into
 user-creation (4b), the invite-accept callback (4c), and the Login Action (4d) are
 separate later steps; nothing here touches CM's user-write repos.
 
-Domain-agnostic: the caller passes app_metadata ({tenant_id, user_type, user_id});
+Domain-agnostic: the caller passes app_metadata ({tenant_id, user_type, cm_user_id});
 this client does not know CM's domain model.
 
 SECURITY: the M2M client secret (SecretStr, read once at the token request) and the
@@ -207,7 +207,7 @@ class Auth0ManagementClient:
     async def create_user(self, email: str, app_metadata: dict[str, Any]) -> dict[str, Any]:
         """Create an Auth0 user; return the parsed user (carries ``user_id`` = the sub).
 
-        app_metadata is opaque here ({tenant_id, user_type, user_id} from the caller).
+        app_metadata is opaque here ({tenant_id, user_type, cm_user_id} from the caller).
         The user is created in the configured database connection.
         """
         response = await self._authed_request(
