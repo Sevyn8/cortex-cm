@@ -4403,6 +4403,18 @@ Changed (three files): `src/admin_backend/auth/provisioning.py` (the app_metadat
 
 Not changed: the log-context `user_id` field, the `created["user_id"]` Auth0 response read, the `test_auth0_management.py` opaque pass-through blob, and nothing about the token claim / CI-3 verifier / AuthContext. Grep confirmed no other place writes or asserts an app_metadata `user_id` key.
 
+## Step CI-4c: invite-accept endpoint (INVITED to ACTIVE, record auth0_sub)
+
+Status: done (local). The self-service flow that flips the caller's OWN tenant_user INVITED -> ACTIVE and records `auth0_sub` on first login (step 4c of the CM<->Auth0 arc). Authorized by the user's own verified Auth0 token (no admin gate); `auth0_sub` comes from the verified token sub (never request input); the endpoint acts only on the verified `user_id` (self-only). The status flip + auth0_sub write are ONE atomic guarded UPDATE (`WHERE status='INVITED'`), constraint-safe (`ck_tenant_users_auth0_sub_consistency`) and idempotent. `transition()` is untouched (it excludes INVITED and never writes auth0_sub).
+
+Decisions (as approved): (A) audit action `ACCEPT_INVITATION` (additive `_ACTION_LABELS` entry), distinct from the admin `ACTIVATE`; (B) guarded-UPDATE-then-classify (happy path is one statement; 0-row classify distinguishes outcomes); (C) self-activation audit actor = the user (pattern (b)); already-active is a uniform 200 with an `activated` flag; a PLATFORM caller is refused with an explicit 403 guard.
+
+Holds: the rowcount-0 classify gives a still-INVITED read its own `CONFLICT` outcome (a concurrent-accept race, 409 retryable), never misclassified; SUSPENDED -> NOT_INVITED -> 409 (intended); the PLATFORM-guard unit test proves the session is never touched (the guard runs before any DB access).
+
+Changed: `src/admin_backend/repositories/tenant_users.py` (new `AcceptInvitationResult` enum + `accept_invitation` method); `src/admin_backend/audit/emit.py` (the `ACCEPT_INVITATION` label); `src/admin_backend/routers/v1/me.py` (`POST /me/accept-invitation`, self-only, PLATFORM-403, response cases); `src/admin_backend/schemas/me.py` (`AcceptInvitationResponse`); `docs/architecture_RBAC.md` (invite-accept note). New `tests/unit/test_accept_invitation_guard.py` (the DB-free PLATFORM-guard, ci/unit) and `tests/integration/test_accept_invitation.py` (DB tier: repo activate/idempotent/not-found/audit + endpoint happy/idempotent/platform-403/not-found).
+
+Deferred (separate steps): the Auth0 Login Action (4d) and platform-user accept (no platform_users create endpoint exists; a future path).
+
 ---
 
 # How to use this with Claude Code

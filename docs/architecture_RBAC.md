@@ -1737,6 +1737,20 @@ Key differences from the tenants (Step 6.11) transition matrix:
   (forbidden while INVITED); recording `auth0_sub` and INVITED->ACTIVE
   is the invite-accept callback, Step 4c. Platform-user provisioning is
   a separate future question (no platform_users create endpoint exists).
+
+  Invite-accept (Step CI-4c): `POST /api/v1/me/accept-invitation` is the
+  self-service flow that flips the caller's OWN tenant_user INVITED ->
+  ACTIVE and records `auth0_sub`, on first login. It is authorized by the
+  caller's own verified Auth0 token (no admin gate): `auth0_sub` is taken
+  from the verified token sub (never request input), and the endpoint acts
+  only on the verified `user_id` (self-only). The status flip and the
+  `auth0_sub` write are ONE atomic guarded UPDATE (`WHERE status='INVITED'`),
+  constraint-safe and idempotent (a repeat call when already ACTIVE returns
+  200, activated=false). A dedicated repo method (`accept_invitation`) does
+  this; `transition()` is unchanged (it excludes INVITED). The activation
+  emits an `ACCEPT_INVITATION` audit row same-transaction (actor = the user).
+  A PLATFORM caller is refused (403); platform-user accept is a separate
+  future path.
 - Only ACTIVE <-> SUSPENDED is a valid transition pair. TRIAL exists
   on tenants but not on tenant_users; ONBOARDING / TERMINATED are
   not tenant_user states.

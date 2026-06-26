@@ -155,6 +155,9 @@ _ACTION_LABELS: dict[str, str] = {
     "UPDATE": "Edited",
     "SUSPEND": "Suspended",
     "ACTIVATE": "Activated",
+    # Step CI-4c: self-service invite-accept (INVITED -> ACTIVE). Distinct from the
+    # admin ACTIVATE (SUSPENDED -> ACTIVE) so the audit log separates the actors.
+    "ACCEPT_INVITATION": "Accepted invitation",
     # Step 6.16.5 : module-access enable/disable + stores per-target
     # transition labels per LD3. ACTIVATE reused (already present).
     # OPEN_SOFT is reserved per FN-AB-68: target=OPENING is not
